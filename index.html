@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>防災小英雄大冒險 - 終極進化版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #a7f3d0; 
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.5) 0%, transparent 15%),
+                radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.4) 0%, transparent 20%),
+                radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.3) 0%, transparent 30%);
+            overflow: hidden;
+            touch-action: none; 
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .game-title {
+            font-family: 'Fredoka One', 'Noto Sans TC', cursive;
+            font-weight: 900;
+            -webkit-text-stroke: 4px white;
+            text-shadow: 0px 8px 0px #d97706, 0px 12px 10px rgba(0,0,0,0.4);
+            letter-spacing: 3px;
+        }
+
+        .panel-rpg {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border: 6px solid #8b4513;
+            border-radius: 20px;
+            box-shadow: 
+                0 12px 0 #5c2e0b,
+                inset 0 0 20px rgba(139, 69, 19, 0.2),
+                0 20px 25px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        
+        .panel-rpg::before, .panel-rpg::after {
+            content: '';
+            position: absolute;
+            width: 12px; height: 12px;
+            background-color: #5c2e0b;
+            border-radius: 50%;
+            top: 10px;
+        }
+        .panel-rpg::before { left: 10px; }
+        .panel-rpg::after { right: 10px; }
+
+        .btn-rpg {
+            font-family: 'Fredoka One', 'Noto Sans TC', cursive;
+            background: linear-gradient(to bottom, #4ade80, #22c55e);
+            border: 4px solid #14532d;
+            border-radius: 16px;
+            color: #fff;
+            font-weight: 900;
+            text-shadow: 0 2px 0 #14532d;
+            box-shadow: 0 8px 0 #166534, 0 12px 10px rgba(0,0,0,0.3);
+            transition: all 0.1s;
+        }
+        .btn-rpg:active {
+            transform: translateY(8px);
+            box-shadow: 0 0 0 #166534, 0 4px 4px rgba(0,0,0,0.3);
+        }
+
+        .option-btn {
+            background: #ffffff;
+            border: 4px solid #8b4513;
+            border-radius: 16px;
+            box-shadow: 0 6px 0 #5c2e0b;
+            transition: all 0.15s;
+            cursor: pointer;
+            text-align: left;
+            position: relative;
+        }
+        .option-btn:hover:not(:disabled) {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 0 #5c2e0b;
+            background: #fffbeb;
+        }
+        .option-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #5c2e0b;
+        }
+
+        .heart-icon { display: inline-block; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .heart-icon.lost { filter: grayscale(100%); opacity: 0.3; transform: scale(0.6); }
+        .heart-icon.heal { transform: scale(1.3); }
+
+        #game-canvas {
+            background-color: #dcfce7;
+            border: 8px solid #8b4513;
+            border-radius: 16px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            max-width: 100%;
+            max-height: 70vh;
+            touch-action: none; 
+        }
+
+        #virtual-joystick-zone {
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 100%; height: 50%;
+            z-index: 30;
+            display: none;
+            touch-action: none;
+        }
+
+        .joystick-base {
+            position: absolute;
+            width: 120px; height: 120px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 4px solid rgba(139, 69, 19, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .joystick-knob {
+            position: absolute;
+            width: 60px; height: 60px;
+            background: radial-gradient(circle at 30% 30%, #fcd34d, #f59e0b);
+            border: 4px solid #8b4513;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            box-shadow: 0 6px 0 #b45309, 0 10px 10px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+
+<body class="w-screen h-screen flex flex-col items-center justify-center p-2 relative">
+    
+    <!-- Footer -->
+    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-emerald-900 font-black text-xs md:text-sm z-50 drop-shadow-md whitespace-nowrap bg-white/60 px-4 py-1 rounded-full border-2 border-emerald-600 backdrop-blur-sm">
+        © 2026 鄭念慈 版權所有 | 終極進化版
+    </div>
+
+    <div id="start-screen" class="panel-rpg p-6 md:p-10 text-center flex flex-col items-center justify-center absolute z-40 max-w-2xl w-[95%] transition-transform duration-500">
+        <h1 class="game-title text-4xl md:text-6xl text-amber-500 mb-6 drop-shadow-xl leading-tight">
+            防災小英雄<br><span class="text-emerald-500 text-5xl md:text-7xl">大冒險</span>
+        </h1>
+        
+        <div class="text-6xl mb-6 animate-bounce drop-shadow-lg">🦸‍♂️</div>
+
+        <p class="text-base md:text-xl text-amber-900 mb-8 font-black leading-relaxed bg-white/80 rounded-xl p-4 border-4 border-dashed border-amber-400">
+            在奇幻森林中尋找 <span class="text-yellow-500 text-2xl">⭐</span> 知識寶石！<br>
+            收集 10 顆寶石並回答問題。<br>
+            <span class="text-red-600">小心巡邏的搗蛋惡魔 👿！</span><br>
+            <span class="text-sm text-blue-600 mt-2 block">(手機版支援全螢幕滑動搖桿控制)</span>
+        </p>
+
+        <button id="start-btn" class="btn-rpg text-2xl md:text-3xl py-4 px-12 w-full max-w-sm">開始冒險 🚀</button>
+    </div>
+
+    <div id="hud" class="w-full max-w-4xl flex justify-between items-center mb-2 hidden z-10 px-2 mt-2">
+        <div class="panel-rpg !border-4 !rounded-xl !box-shadow-sm px-3 md:px-4 py-2 flex items-center gap-1 md:gap-2">
+            <span class="text-sm md:text-lg font-black text-red-600 hidden md:inline">生命</span>
+            <div id="lives-container" class="flex gap-1 text-xl md:text-2xl">
+                <span class="heart-icon">❤️</span>
+                <span class="heart-icon">❤️</span>
+                <span class="heart-icon">❤️</span>
+            </div>
+        </div>
+        <div class="panel-rpg !border-4 !rounded-xl !box-shadow-sm px-4 py-2 flex items-center gap-2">
+            <span class="text-sm md:text-lg font-black text-blue-600">寶石</span>
+            <span id="progress-display" class="text-xl md:text-2xl font-black text-blue-600">0/10</span>
+        </div>
+        <div class="panel-rpg !border-4 !rounded-xl !box-shadow-sm px-6 py-2">
+            <span class="text-sm md:text-lg font-black text-amber-600">分數</span>
+            <span id="score-display" class="text-xl md:text-2xl font-black text-amber-600 font-['Fredoka_One']">0</span>
+        </div>
+    </div>
+
+    <canvas id="game-canvas" class="hidden z-10"></canvas>
+    
+    <div id="virtual-joystick-zone">
+        <div id="joystick-base" class="joystick-base hidden"></div>
+        <div id="joystick-knob" class="joystick-knob hidden"></div>
+    </div>
+
+    <div id="quiz-modal" class="hidden absolute inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300">
+        <div class="panel-rpg w-full max-w-2xl bg-white p-4 md:p-6 flex flex-col max-h-[95vh] overflow-y-auto">
+            <div class="flex items-center gap-3 mb-4 bg-amber-100 rounded-xl p-3 border-2 border-amber-300 transform transition-transform">
+                <span id="mascot-emoji" class="text-3xl md:text-4xl shrink-0 drop-shadow-md animate-pulse">👨‍🚒</span>
+                <div class="font-black text-amber-900 flex-grow">
+                    <span class="text-lg md:text-xl block md:inline">獲得寶石！接受挑戰</span>
+                    <span id="theme-tag" class="md:ml-2 mt-1 md:mt-0 bg-amber-500 text-white px-3 py-1 rounded-full text-sm inline-block shadow-sm">水域安全</span>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 shadow-inner border-4 border-gray-100 mb-4">
+                <h2 id="question-text" class="text-lg md:text-xl font-black text-gray-800 leading-relaxed">
+                    載入題目中...
+                </h2>
+            </div>
+
+            <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                <!-- Options injected via JS -->
+            </div>
+
+            <div id="result-feedback" class="hidden text-center p-4 rounded-xl border-4 mb-2 animate-bounce-short">
+                <div id="result-icon" class="text-4xl md:text-5xl mb-2">⭕</div>
+                <p id="result-explanation" class="text-base md:text-lg font-bold text-gray-800"></p>
+                <button id="next-btn" class="btn-rpg text-lg md:text-xl py-2 px-8 mt-4 w-full md:w-auto">繼續探險 ➡️</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-screen" class="hidden panel-rpg p-6 md:p-8 text-center flex flex-col items-center justify-center absolute z-40 max-w-md w-[95%]">
+        <h1 id="end-title" class="game-title text-4xl mb-4 text-emerald-600">冒險結束！</h1>
+        
+        <div class="bg-white/80 p-6 rounded-2xl border-4 border-amber-400 mb-6 w-full shadow-inner relative overflow-hidden">
+            <div class="absolute -top-4 -right-4 text-6xl opacity-20">⭐</div>
+            <div class="text-amber-800 font-black mb-1">最終得分</div>
+            <div id="final-score" class="text-6xl font-black text-amber-500 font-['Fredoka_One'] mb-2 drop-shadow-md">0</div>
+        </div>
+
+        <div id="rank-badge" class="text-7xl mb-4 drop-shadow-lg animate-bounce">🏅</div>
+        <p id="result-message" class="text-base md:text-lg font-black text-gray-800 mb-6 p-4 rounded-xl border-2 bg-white/90 shadow-sm">
+            結算中...
+        </p>
+
+        <button id="restart-btn" class="btn-rpg text-xl md:text-2xl py-3 px-10 w-full">再次挑戰 🔄</button>
+    </div>
+
+    <canvas id="effects-canvas" class="fixed top-0 left-0 w-full h-full pointer-events-none z-[100]"></canvas>
+
+    <script>
+        const quizData = [
+            { theme: "水域安全", mascot: "🛟", question: "『救溺五步』的第一步『叫』是指什麼？", options: ["大聲呼救，通知周圍的人", "叫落水的人自己游回來", "叫朋友一起跳下水", "叫救護車但自己先走"], correctAnswer: 0, explanation: "救溺第一步是『大聲呼救』，請求附近的成年人或救生員幫忙！" },
+            { theme: "水域安全", mascot: "📱", question: "『救溺五步』的第二步『叫』，是要打給誰？", options: ["打給同學", "撥打 119、118 或是 110", "打給披薩店", "打給老師"], correctAnswer: 1, explanation: "第二步要立刻撥打 119（消防）、118（海巡）或 110（警察）求救！" },
+            { theme: "水域安全", mascot: "🪵", question: "『救溺五步』的第三步『伸』是什麼意思？", options: ["伸展身體做暖身", "伸手直接去拉溺水者", "利用延伸物(如樹枝、竹竿)讓溺水者抓住", "把腳伸進水裡試水溫"], correctAnswer: 2, explanation: "『伸』是指在岸上利用竹竿、樹枝等延伸物拉溺水者，絕對不能直接伸手拉，以免自己也被拉下水！" },
+            { theme: "水域安全", mascot: "🏐", question: "如果手邊沒有長長的竹竿，可以進行救溺第四步『拋』，請問可以拋什麼？", options: ["石頭", "手機", "拋送漂浮物，例如球、繩子、空瓶", "鞋子"], correctAnswer: 2, explanation: "『拋』是指把有浮力的東西（如球、保特瓶、救生圈）拋給溺水者，幫助他們浮在水面上。" },
+            { theme: "水域安全", mascot: "🛶", question: "『救溺五步』的第五步『划』是指什麼？", options: ["在岸邊假裝划船", "利用大型浮具(如船、浮木)划過去救人", "叫溺水者自己划過來", "用手划水洗臉"], correctAnswer: 1, explanation: "如果有大型浮具（船、救生浮標），可以利用它們『划』過去安全地救人。" },
+            { theme: "水域安全", mascot: "🏊", question: "去玩水之前，哪一個動作非常重要，絕對不能省略？", options: ["吃得很飽", "下水前先做暖身操", "喝很多汽水", "直接跳下水"], correctAnswer: 1, explanation: "下水前一定要做『暖身操』，才不會在水裡抽筋喔！" },
+            { theme: "水域安全", mascot: "👀", question: "我們應該選擇什麼樣的地方戲水最安全？", options: ["沒有人管的神祕溪流", "水看起來很清澈的水溝", "有救生員的合法地點", "立有『禁止戲水』告示牌的地方"], correctAnswer: 2, explanation: "一定要選擇『有救生設備與救生員的合法地點』戲水，安全才有保障！" },
+            { theme: "水域安全", mascot: "👖", question: "去游泳時，可以穿牛仔褲下水嗎？", options: ["可以，這樣比較帥", "可以，如果有帶換洗的", "不可以，牛仔褲吸水後會變很重，非常危險", "可以，只泡腳就好"], correctAnswer: 2, explanation: "牛仔褲吸水後會變得很重，嚴重影響活動，容易導致溺水，絕對『不可穿牛仔褲下水』！" },
+            { theme: "水域安全", mascot: "🤡", question: "在水中和朋友玩耍時，可以做什麼事？", options: ["把朋友的頭按進水裡", "假裝自己溺水嚇別人", "一起練習打水，不可在水中嬉鬧惡作劇", "互相潑很燙的水"], correctAnswer: 2, explanation: "在水中『不可嬉鬧惡作劇』，假裝溺水或把人壓入水中都可能引發真實的危險！" },
+            { theme: "水域安全", mascot: "🤒", question: "如果今天覺得有點頭暈、身體不舒服，還可以去游泳嗎？", options: ["可以，泡水會比較舒服", "不行，身體虛累狀況不佳時不要戲水", "可以，游慢一點就好", "可以，吃顆藥再下水"], correctAnswer: 1, explanation: "身體疲累或狀況不佳時，體力會變差，『千萬不要勉強下水』！" },
+            { theme: "一氧化碳", mascot: "👻", question: "一氧化碳被稱為『隱形殺手』，請問它有什麼特徵？", options: ["白色的，有甜味", "綠色的，有臭味", "黑色的，有燒焦味", "沒有顏色，也沒有味道"], correctAnswer: 3, explanation: "一氧化碳是『沒有顏色、沒有味道』的氣體，非常難以察覺，所以很危險！" },
+            { theme: "一氧化碳", mascot: "🤕", question: "一氧化碳中毒時，頭部可能會出現什麼症狀？", options: ["頭髮變色", "頭痛、暈眩", "長出角", "聽力變好"], correctAnswer: 1, explanation: "吸入一氧化碳會讓身體缺氧，初期常見症狀包含『頭痛、暈眩』。" },
+            { theme: "一氧化碳", mascot: "🤢", question: "洗澡洗到一半，如果覺得『想吐、四肢無力』，可能是發生了什麼事？", options: ["肚子餓了", "感冒發燒", "可能是一氧化碳中毒", "水太熱了"], correctAnswer: 2, explanation: "想吐、四肢無力、意識不清都是『一氧化碳中毒』的警訊！" },
+            { theme: "一氧化碳", mascot: "🪟", question: "為了預防一氧化碳中毒，使用熱水器時『最重要』的動作是什麼？", options: ["把門窗關緊保暖", "打開門窗，保持環境通風", "開冷氣", "在浴室點蠟燭"], correctAnswer: 1, explanation: "最重要的預防方法就是『保持通風』，讓空氣流通！" },
+            { theme: "一氧化碳", mascot: "✅", question: "購買熱水器時，應該挑選哪一種？", options: ["最便宜的", "外觀最漂亮的", "選用貼有合格標章的熱水器", "二手來路不明的"], correctAnswer: 2, explanation: "一定要選擇貼有『合格標章』的熱水器，安全才有保障喔！" },
+            { theme: "一氧化碳", mascot: "🔧", question: "關於熱水器的排氣管，下面哪一個觀念是正確的？", options: ["可以隨便彎折", "排氣管要保持暢通，安裝正確", "塞住也沒關係", "越短越好，不用排到室外"], correctAnswer: 1, explanation: "排氣管不可堵塞或彎折，必須『排氣暢通』並正確安裝將廢氣排出戶外。" },
+            { theme: "一氧化碳", mascot: "💨", question: "如果發現有人可能一氧化碳中毒了，第一時間該怎麼做？", options: ["立刻打開門窗，讓空氣流通", "給他喝熱水", "幫他蓋棉被", "拿扇子幫他搧風"], correctAnswer: 0, explanation: "第一步是『立刻打開門窗』，讓新鮮空氣進來，並迅速將患者移到戶外！" },
+            { theme: "一氧化碳", mascot: "🚑", question: "懷疑家人一氧化碳中毒時，應該撥打哪一支電話求救？", options: ["165", "119", "117", "113"], correctAnswer: 1, explanation: "發生緊急醫療狀況，請立刻撥打『119』，並告訴消防員『可能是一氧化碳中毒』！" },
+            { theme: "一氧化碳", mascot: "🛁", question: "冬天洗澡時，為了怕冷，可以把浴室和家裡的窗戶全部緊閉嗎？", options: ["可以，這樣比較溫暖", "不可以，洗澡時也要保持通風", "可以，洗快一點就好", "可以，用很熱的水洗"], correctAnswer: 1, explanation: "『不可以』！即使在冬天，使用熱水器時也一定要保持室內與浴室通風，避免長時間在密閉空間使用。" },
+            { theme: "一氧化碳", mascot: "👨‍🔧", question: "家裡的熱水器需要保養嗎？", options: ["壞掉再說", "不需要，它不會壞", "請專業人員定期檢查熱水器與排氣管", "自己拿工具拆開看"], correctAnswer: 2, explanation: "要『定期請專業人員檢查』熱水器及排氣管，確保安全！" },
+            { theme: "火災預防", mascot: "🔥", question: "預防火災的第一要訣『預防火災』是指什麼？", options: ["在家裡生營火", "不玩火，不亂碰電器與插座", "多買幾台滅火器就好", "把插頭全部插滿"], correctAnswer: 1, explanation: "平時養成好習慣，『不玩火、不亂碰插座』，是最基本的預防！" },
+            { theme: "火災預防", mascot: "🍳", question: "在廚房煮東西時，應該注意什麼安全？", options: ["去客廳看電視", "去睡個午覺", "使用火源時，要有人在旁邊看顧", "出門買飲料"], correctAnswer: 2, explanation: "『人離火熄』！煮東西時一定要有人在旁邊看著，以免發生危險。" },
+            { theme: "火災預防", mascot: "📢", question: "火災發生時的應變步驟，第一步『叫』是指什麼？", options: ["大聲呼救『失火了』，通知家人或鄰居", "叫消防車快點來", "叫寵物過來", "叫別人去救火"], correctAnswer: 0, explanation: "發現火災第一件事，大叫『失火了！』，警告周圍的人趕快逃生！" },
+            { theme: "火災預防", mascot: "🛗", question: "火災逃生時，可以搭乘電梯嗎？", options: ["可以，這樣最快", "不可以，電梯可能會停電把人困住", "可以，如果火還很小的話", "只要戴口罩就可以搭"], correctAnswer: 1, explanation: "火災時極易發生斷電，『絕對不可以搭乘電梯』，必須走樓梯逃生！" },
+            { theme: "火災預防", mascot: "🚪", question: "逃出房間時，為什麼要『隨手關門』？", options: ["怕小偷進來", "為了保持房間整潔", "可以減緩火勢和濃煙蔓延", "怕別人跟著跑出來"], correctAnswer: 2, explanation: "『關門』可以把火和濃煙暫時擋在房間內，為自己和其他人爭取更多逃生時間！" },
+            { theme: "火災預防", mascot: "📞", question: "逃到安全的地方後，撥打 119 報案，最重要是要告訴消防員什麼？", options: ["我現在很害怕", "發生火災的詳細地址或地點", "我的名字跟年紀", "火是怎麼燒起來的"], correctAnswer: 1, explanation: "報案時，一定要清楚說出『發生火災的地點/地址』，消防車才能最快趕到！" },
+            { theme: "火災預防", mascot: "🌫️", question: "在濃煙中逃生，應該保持什麼姿勢？", options: ["站得直直的跑", "低姿勢爬行，貼近地面呼吸", "跳躍前進", "閉著眼睛走"], correctAnswer: 1, explanation: "濃煙會往上飄，越貼近地面空氣越新鮮，所以要『低姿勢爬行』逃生！" },
+            { theme: "火災預防", mascot: "👕", question: "如果身上的衣服不小心著火了，保命的動作是什麼？", options: ["趕快跑來跑去", "用手拍打", "停下來、躺下來、滾動滅火", "拿外套甩"], correctAnswer: 2, explanation: "衣服著火切記『停、躺、滾』！不要跑，跑動會有風讓火燒得更大！" },
+            { theme: "火災預防", mascot: "🦯", question: "逃生時如果視線不清楚，該怎麼辦？", options: ["坐在原地哭", "到處亂摸亂跑", "沿著牆壁摸索，找到安全出口", "打開手機手電筒慢慢走"], correctAnswer: 2, explanation: "視線不清時，『沿著牆壁』單向摸索，可以幫助你找到門口或逃生方向！" },
+            { theme: "火災預防", mascot: "🧻", question: "遇到濃煙時，可以用什麼保護自己？", options: ["用塑膠袋套住頭", "用濕毛巾摀住口鼻", "用手捏住鼻子憋氣", "戴上太陽眼鏡"], correctAnswer: 1, explanation: "可以使用『濕毛巾摀住口鼻』，避免吸入有毒濃煙。" },
+            { theme: "地震應變", mascot: "🫨", question: "地震來臨時，保命3步驟的第一步『趴下 (DROP)』是為了什麼？", options: ["為了找掉在地上的東西", "降低重心，趴下身體避免摔倒", "為了做伏地挺身", "為了躲避敵人"], correctAnswer: 1, explanation: "地震搖晃容易讓人跌倒，『趴下』可以降低重心，保護自己不被摔傷！" },
+            { theme: "地震應變", mascot: "🪑", question: "地震保命3步驟的第二步『掩護 (COVER)』，最常怎麼做？", options: ["用雙手遮住眼睛", "躲到堅固的桌子下，保護頭部", "躲進被窩裡", "躲在門框底下"], correctAnswer: 1, explanation: "『掩護』是要保護最重要的頭部和頸部，躲在堅固的桌下是最好的選擇！" },
+            { theme: "地震應變", mascot: "✊", question: "地震保命3步驟的第三步『穩住 (HOLD ON)』是指？", options: ["抓住旁邊的人", "深呼吸保持心情穩定", "抓住桌腳，直到地震結束", "扶住牆壁"], correctAnswer: 2, explanation: "桌子可能會因為搖晃而移動，所以要雙手緊緊『抓住桌腳穩住』！" },
+            { theme: "地震應變", mascot: "🛍️", question: "如果地震發生在沒有桌子的房間，該怎麼保護自己？", options: ["馬上衝出門", "跑到窗戶旁邊", "雙手抱頭，蹲低保護頭部", "跳到床上"], correctAnswer: 2, explanation: "沒有桌子時，遠離會掉落物品的家具，蹲低並『用雙手或包包保護頭頸部』。" },
+            { theme: "地震應變", mascot: "🛒", question: "在商場或大賣場遇到地震，要注意什麼危險？", options: ["商品會打折", "注意商品掉落，用包包保護頭部", "注意手推車會跑走", "燈光會變暗"], correctAnswer: 1, explanation: "商場有很多貨架，最危險的是『掉落的商品』，要遠離貨架並保護頭部！" },
+            { theme: "地震應變", mascot: "🚶", question: "走在室外人行道遇到地震，應該怎麼辦？", options: ["馬上跑進旁邊的建築物", "站在大樹底下", "蹲下並用包包保護頭部，遠離招牌和樹木", "跑到馬路中間"], correctAnswer: 2, explanation: "在室外要遠離容易倒塌的招牌、路燈、樹木或建築外牆，在空曠處蹲下保護頭部。" },
+            { theme: "地震應變", mascot: "🎒", question: "我們平時應該準備『避難包』，裡面一定要放什麼？", options: ["撲克牌和玩具", "飲用水、乾糧、手電筒、急救包等", "很重的教科書", "生鮮肉品"], correctAnswer: 1, explanation: "避難包要放『維持生命的基本物品』，如水、乾糧、急救包、手電筒、保暖衣物等。" },
+            { theme: "地震應變", mascot: "🪟", question: "地震發生時，哪裡是『危險』的地方，應該避開？", options: ["堅固的桌子下", "空曠的操場", "窗戶、電器、書櫃等危險物品旁邊", "建築物的柱子旁"], correctAnswer: 2, explanation: "窗戶玻璃可能會破裂，書櫃可能會倒塌，一定要『遠離這些危險物品』！" },
+            { theme: "地震應變", mascot: "🎬", question: "在電影院遇到地震時，應該怎麼做？", options: ["跟著大家一起往出口擠", "大聲尖叫", "蹲在座位前方，用包包保護頭部", "站在椅子上"], correctAnswer: 2, explanation: "在電影院不要慌亂推擠，先『蹲在座位前方或躲在兩排椅子間』，保護頭部。" },
+            { theme: "地震應變", mascot: "🧘", question: "地震搖晃停止後，我們應該怎麼做？", options: ["立刻跑回大樓拿東西", "依照指示有秩序地撤離到安全地點", "繼續留在原地睡覺", "搭電梯下樓"], correctAnswer: 1, explanation: "地震結束後，聽從大人指示，『有秩序地走樓梯』撤離到空曠安全的地方。" },
+            { theme: "颱風準備", mascot: "🥫", question: "颱風來之前，我們應該準備什麼物資以備不時之需？", options: ["準備很多冰淇淋", "準備食物和飲用水", "準備很多漫畫書", "不用準備，叫外送就好"], correctAnswer: 1, explanation: "颱風可能會造成停水停電，一定要先『準備好食物和飲用水』！" },
+            { theme: "颱風準備", mascot: "🧹", question: "為了防止颱風帶來大雨造成家裡淹水，颱風前可以做什麼？", options: ["把排水溝堵住", "檢查門窗並關好，清理水溝讓水流通", "把水管打開", "在門口挖一個洞"], correctAnswer: 1, explanation: "『清理家裡周圍的水溝』，保持排水暢通，可以有效防止淹水喔！" },
+            { theme: "颱風準備", mascot: "🏠", question: "颱風風雨很大的時候，最安全的地方是哪裡？", options: ["海邊看浪", "公園玩水", "待在家裡，不要外出", "山上露營"], correctAnswer: 2, explanation: "颱風天外面風強雨大非常危險，『乖乖待在家裡』絕對是最好的選擇！" },
+            { theme: "颱風準備", mascot: "🪟", question: "颱風天待在家裡，應該遠離什麼地方以免受傷？", options: ["遠離沙發", "遠離門窗，以免玻璃破裂受傷", "遠離電視", "遠離冰箱"], correctAnswer: 1, explanation: "強風可能會吹破玻璃或吹落物品砸破窗戶，所以要『遠離門窗』比較安全。" },
+            { theme: "颱風準備", mascot: "⚡", question: "如果在外面看到被風吹斷掉在地上的電線，該怎麼辦？", options: ["拿起來玩", "跨過去", "不要靠近電線、電桿，以免觸電", "用水潑它"], correctAnswer: 2, explanation: "掉落的電線可能還有電，『絕對不要靠近』，以免發生嚴重的觸電意外！" },
+            { theme: "颱風準備", mascot: "🌊", question: "颱風天可以去河邊或排水溝旁邊玩水嗎？", options: ["不可以，不要靠近河邊或排水溝", "可以，穿雨衣就好", "可以，水淺的地方就好", "可以，大人陪同就可以"], correctAnswer: 0, explanation: "颱風會造成河水暴漲，『千萬不要靠近河邊、排水溝或積水處』，非常危險！" },
+            { theme: "颱風準備", mascot: "📻", question: "颱風期間，我們要怎麼知道最新的天氣狀況？", options: ["看天空猜測", "隨時收聽或收看最新天氣消息", "問路人", "打電話問警察"], correctAnswer: 1, explanation: "透過電視、廣播或手機，『隨時關注氣象預報和政府公告』，掌握最新消息。" },
+            { theme: "颱風準備", mascot: "🌳", question: "颱風過後，天氣放晴了，第一件事可以做什麼？", options: ["馬上衝出去玩", "檢查住家環境，小心掉落物，清理周圍", "把避難包丟掉", "去海邊撿貝殼"], correctAnswer: 1, explanation: "颱風剛過還是可能有招牌或樹枝掉落，要『先小心檢查並清理住家環境』。" },
+            { theme: "颱風準備", mascot: "🚰", question: "颱風過後要使用水和電之前，要注意什麼？", options: ["直接打開來用", "確認水和電可以安全使用", "先把總開關關掉", "先喝一口自來水看看"], correctAnswer: 1, explanation: "颱風可能損壞管線，使用前要『先確認水電設施是否正常、安全』。" },
+            { theme: "颱風準備", mascot: "🤝", question: "颱風來臨前，除了準備物品，還應該和家人做什麼約定？", options: ["約定晚餐吃什麼", "約定聯絡方式與緊急集合地點", "約定誰負責打掃", "約定看什麼電視節目"], correctAnswer: 1, explanation: "萬一發生災害家人走散，事先『約定好聯絡方式和集合地點』非常重要喔！" }
+        ];
+
+        const synth = new Tone.Synth().toDestination();
+        const polySynth = new Tone.PolySynth(Tone.Synth).toDestination();
+        polySynth.volume.value = -8;
+        const fmSynth = new Tone.FMSynth().toDestination(); 
+        fmSynth.volume.value = -12;
+        
+        function playSound(type) {
+            if(Tone.context.state !== 'running') return;
+            const now = Tone.now();
+            switch(type) {
+                case 'start': polySynth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n", now); break;
+                case 'correct': synth.triggerAttackRelease("G5", "16n", now); synth.triggerAttackRelease("C6", "8n", now + 0.1); break;
+                case 'wrong': synth.triggerAttackRelease("D4", "8n", now); synth.triggerAttackRelease("G3", "4n", now + 0.15); break;
+                case 'hit': 
+                    fmSynth.triggerAttackRelease("C2", "16n", now); 
+                    fmSynth.triggerAttackRelease("C1", "8n", now + 0.1); 
+                    break;
+                case 'collect': synth.triggerAttackRelease("E5", "32n", now); break;
+                case 'win': 
+                    polySynth.triggerAttackRelease(["C4", "E4", "G4"], "4n", now); 
+                    polySynth.triggerAttackRelease(["F4", "A4", "C5"], "4n", now + 0.4); 
+                    polySynth.triggerAttackRelease(["G4", "B4", "D5"], "4n", now + 0.8); 
+                    polySynth.triggerAttackRelease(["C5", "E5", "G5", "C6"], "2n", now + 1.2); 
+                    break;
+                case 'lose': 
+                    polySynth.triggerAttackRelease(["C4", "Eb4", "G4"], "2n", now); 
+                    polySynth.triggerAttackRelease(["G3", "Bb3", "D4"], "2n", now + 0.6); 
+                    polySynth.triggerAttackRelease(["C3", "Eb3", "G3"], "1n", now + 1.2); 
+                    break;
+            }
+        }
+
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        let gameState = 'START'; 
+        let animationId;
+        let lastTime = 0; 
+        
+        const cols = 15;
+        const rows = 11;
+        let tileSize = 30;
+        let mapLayout = [];
+
+        const mapTemplates = [
+            [ 
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1], [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
+                [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1], [1,0,1,1,1,0,1,1,1,0,1,1,1,0,1], [1,0,0,0,0,0,1,0,1,0,0,0,0,0,1],
+                [1,1,1,1,1,0,1,0,1,0,1,1,1,1,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,1,1,1,0,1,1,1,0,1,1,1,0,1],
+                [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            ],
+            [ 
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1], [1,0,1,1,0,1,0,1,0,1,0,1,1,0,1],
+                [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1], [1,1,0,1,1,1,1,0,1,1,1,1,0,1,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,1,0,1,1,1,1,0,1,1,1,1,0,1,1], [1,0,0,0,0,1,0,0,0,1,0,0,0,0,1], [1,0,1,1,0,1,0,1,0,1,0,1,1,0,1],
+                [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            ],
+            [ 
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,0,1,1,1,1,1,0,1,1,1,1,1,0,1],
+                [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1], [1,0,1,0,1,1,1,1,1,1,1,0,1,0,1], [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+                [1,0,1,0,1,1,1,0,1,1,1,0,1,0,1], [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1], [1,0,1,1,1,1,1,1,1,1,1,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1], [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            ]
+        ];
+
+        let player = { x: 0, y: 0, size: 20, speed: 150, invincible: 0, isMoving: false };
+        let demons = [];
+        let questionsItems = [];
+        let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+        let joystickVector = { x: 0, y: 0 }; 
+        
+        let score = 0, lives = 3, answeredCount = 0;
+        let currentQuizNode = null, selectedQuestions = [];
+        let inGameParticles = []; 
+
+        window.addEventListener('keydown', (e) => { if(keys.hasOwnProperty(e.key)) { e.preventDefault(); keys[e.key] = true; } });
+        window.addEventListener('keyup', (e) => { if(keys.hasOwnProperty(e.key)) { e.preventDefault(); keys[e.key] = false; } });
+
+        const joystickBase = document.getElementById('joystick-base');
+        const joystickKnob = document.getElementById('joystick-knob');
+        let joystickActive = false;
+        let joyCenter = { x: 0, y: 0 };
+        const maxJoyRadius = 40;
+
+        function handleTouchStart(e) {
+            if(gameState !== 'MAZE') return;
+            e.preventDefault();
+            joystickActive = true;
+            joyCenter = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            joystickBase.style.left = `${joyCenter.x}px`; joystickBase.style.top = `${joyCenter.y}px`;
+            joystickKnob.style.left = `${joyCenter.x}px`; joystickKnob.style.top = `${joyCenter.y}px`;
+            joystickBase.classList.remove('hidden'); joystickKnob.classList.remove('hidden');
+            updateJoystick(e.changedTouches[0]);
+        }
+
+        function handleTouchMove(e) {
+            if(!joystickActive) return;
+            e.preventDefault();
+            updateJoystick(e.changedTouches[0]);
+        }
+
+        function handleTouchEnd(e) {
+            if(!joystickActive) return;
+            e.preventDefault();
+            joystickActive = false;
+            joystickBase.classList.add('hidden'); joystickKnob.classList.add('hidden');
+            joystickVector = { x: 0, y: 0 };
+        }
+
+        function updateJoystick(touch) {
+            let dx = touch.clientX - joyCenter.x, dy = touch.clientY - joyCenter.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > maxJoyRadius) { dx = (dx / distance) * maxJoyRadius; dy = (dy / distance) * maxJoyRadius; }
+            joystickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            joystickVector = { x: dx / maxJoyRadius, y: dy / maxJoyRadius };
+        }
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.closest('button') || e.target.closest('.panel-rpg')) return;
+            handleTouchStart(e);
+        }, {passive: false});
+        document.addEventListener('touchmove', handleTouchMove, {passive: false});
+        document.addEventListener('touchend', handleTouchEnd);
+        document.addEventListener('touchcancel', handleTouchEnd);
+
+        function resizeGame() {
+            const maxWidth = Math.min(window.innerWidth - 20, 800);
+            const heightRatio = window.innerWidth < 768 ? 0.65 : 0.7; 
+            const maxHeight = window.innerHeight * heightRatio; 
+            tileSize = Math.floor(Math.min(maxWidth / cols, maxHeight / rows));
+            canvas.width = tileSize * cols; canvas.height = tileSize * rows;
+            player.size = tileSize * 0.7; player.speed = tileSize * 5; 
+        }
+        window.addEventListener('resize', () => { if(gameState === 'MAZE') resizeGame(); });
+
+        function initLevel() {
+            resizeGame();
+            inGameParticles = []; joystickVector = { x: 0, y: 0 };
+            mapLayout = mapTemplates[Math.floor(Math.random() * mapTemplates.length)];
+            player.x = tileSize * 1.5; player.y = tileSize * 1.5; player.invincible = 0;
+            
+            const demonSpeed = tileSize * 3; 
+            demons = [
+                { x: tileSize * 13.5, y: tileSize * 1.5, vx: -1, vy: 0, speed: demonSpeed * (0.8 + Math.random()*0.4), size: tileSize * 0.7 },
+                { x: tileSize * 1.5, y: tileSize * 9.5, vx: 1, vy: 0, speed: demonSpeed * (0.8 + Math.random()*0.4), size: tileSize * 0.7 },
+                { x: tileSize * 13.5, y: tileSize * 9.5, vx: 0, vy: -1, speed: demonSpeed * (0.8 + Math.random()*0.4), size: tileSize * 0.7 }
+            ];
+
+            const shuffledQuiz = [...quizData].sort(() => Math.random() - 0.5);
+            selectedQuestions = shuffledQuiz.slice(0, 10);
+            questionsItems = [];
+            let possibleSpots = [];
+            
+            for(let r = 1; r < rows - 1; r++) {
+                for(let c = 1; c < cols - 1; c++) {
+                    if(mapLayout[r][c] === 0 && !(r<=2 && c<=2)) possibleSpots.push({c, r});
+                }
+            }
+            possibleSpots = possibleSpots.sort(() => Math.random() - 0.5).slice(0, 10);
+            possibleSpots.forEach((spot, index) => {
+                questionsItems.push({ x: spot.c * tileSize + tileSize/2, y: spot.r * tileSize + tileSize/2, size: tileSize * 0.6, data: selectedQuestions[index], active: true, offsetY: Math.random() * Math.PI * 2 });
+            });
+            updateHUD();
+        }
+
+        function checkWallCollision(newX, newY, size) {
+            const pad = 4;
+            const left = newX - size/2 + pad, right = newX + size/2 - pad;
+            const top = newY - size/2 + pad, bottom = newY + size/2 - pad;
+            const points = [
+                {c: Math.floor(left/tileSize), r: Math.floor(top/tileSize)}, {c: Math.floor(right/tileSize), r: Math.floor(top/tileSize)},
+                {c: Math.floor(left/tileSize), r: Math.floor(bottom/tileSize)}, {c: Math.floor(right/tileSize), r: Math.floor(bottom/tileSize)}
+            ];
+            for (let p of points) { if (p.r >= 0 && p.r < rows && p.c >= 0 && p.c < cols) { if (mapLayout[p.r][p.c] === 1) return true; } }
+            return false;
+        }
+
+        function isIntersecting(a, b) {
+            const dx = a.x - b.x, dy = a.y - b.y;
+            return Math.sqrt(dx * dx + dy * dy) < (a.size/2 + b.size/2) * 0.7; 
+        }
+
+        function spawnGameParticles(x, y, colorStr, count) {
+            for(let i=0; i<count; i++) {
+                inGameParticles.push({ x: x, y: y, vx: (Math.random() - 0.5) * tileSize * 10, vy: (Math.random() - 0.5) * tileSize * 10, life: 1.0, color: colorStr, size: Math.random() * 6 + 4 });
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (gameState !== 'MAZE') { lastTime = timestamp; animationId = requestAnimationFrame(gameLoop); return; }
+            if (!lastTime) lastTime = timestamp;
+            const dt = (timestamp - lastTime) / 1000; 
+            lastTime = timestamp;
+            updateMaze(dt);
+            drawMaze();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function updateMaze(dt) {
+            let moveX = 0; let moveY = 0;
+            if (keys.ArrowUp) moveY -= 1; if (keys.ArrowDown) moveY += 1;
+            if (keys.ArrowLeft) moveX -= 1; if (keys.ArrowRight) moveX += 1;
+            if (moveX === 0 && moveY === 0) { moveX = joystickVector.x; moveY = joystickVector.y; }
+
+            if (moveX !== 0 || moveY !== 0) {
+                player.isMoving = true;
+                const len = Math.sqrt(moveX*moveX + moveY*moveY);
+                if (len > 1) { moveX /= len; moveY /= len; }
+            } else { player.isMoving = false; }
+
+            let nextX = player.x + (moveX * player.speed * dt);
+            let nextY = player.y + (moveY * player.speed * dt);
+
+            if (!checkWallCollision(nextX, player.y, player.size)) player.x = nextX;
+            if (!checkWallCollision(player.x, nextY, player.size)) player.y = nextY;
+
+            if (player.invincible > 0) player.invincible -= dt;
+
+            demons.forEach(d => {
+                let nX = d.x + (d.vx * d.speed * dt), nY = d.y + (d.vy * d.speed * dt);
+                if (checkWallCollision(nX, nY, d.size)) {
+                    const dirs = [{vx:1,vy:0}, {vx:-1,vy:0}, {vx:0,vy:1}, {vx:0,vy:-1}];
+                    const dir = dirs[Math.floor(Math.random() * dirs.length)];
+                    d.vx = dir.vx; d.vy = dir.vy;
+                } else { d.x = nX; d.y = nY; }
+
+                if (player.invincible <= 0 && isIntersecting(player, d)) handlePlayerHit(d);
+            });
+
+            questionsItems.forEach(q => {
+                if (q.active && isIntersecting(player, q)) {
+                    spawnGameParticles(q.x, q.y, '#fbbf24', 15); 
+                    triggerQuiz(q);
+                }
+            });
+
+            for (let i = inGameParticles.length - 1; i >= 0; i--) {
+                let p = inGameParticles[i];
+                p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt * 2; 
+                if (p.life <= 0) inGameParticles.splice(i, 1);
+            }
+        }
+
+        function drawMaze() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for(let r = 0; r < rows; r++) {
+                for(let c = 0; c < cols; c++) {
+                    if (mapLayout[r][c] === 1) {
+                        const x = c * tileSize, y = r * tileSize;
+                        ctx.fillStyle = '#5c2e0b'; ctx.fillRect(x, y, tileSize, tileSize);
+                        ctx.fillStyle = '#8b4513'; ctx.fillRect(x, y, tileSize, tileSize - 6);
+                        ctx.fillStyle = '#a16207'; ctx.fillRect(x + 3, y + 3, tileSize - 6, tileSize - 12);
+                    }
+                }
+            }
+
+            const time = Date.now();
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            
+            ctx.font = `${tileSize * 0.6}px Arial`;
+            questionsItems.forEach(q => { if (q.active) ctx.fillText('⭐', q.x, q.y + Math.sin((time/150) + q.offsetY) * 3); });
+
+            ctx.font = `${tileSize * 0.7}px Arial`;
+            demons.forEach(d => {
+                ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(Math.sin(time / 100) * 0.2); ctx.fillText('👿', 0, 0); ctx.restore();
+            });
+
+            if (player.invincible <= 0 || Math.floor(time / 150) % 2 === 0) {
+                ctx.save(); ctx.translate(player.x, player.y);
+                if (player.isMoving) { ctx.rotate(Math.sin(time / 80) * 0.15); ctx.translate(0, -Math.abs(Math.sin(time / 100)) * 4); }
+                ctx.font = `${tileSize * 0.7}px Arial`; ctx.fillText('🦸‍♂️', 0, 0); ctx.restore();
+            }
+
+            inGameParticles.forEach(p => {
+                ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = 1.0;
+            });
+        }
+
+        function handlePlayerHit(demonObj) {
+            playSound('hit');
+            lives--; updateHUD();
+            
+            spawnGameParticles(player.x, player.y, '#ef4444', 20);
+            player.invincible = 1.5;
+            
+            // 修復的反彈邏輯：距離縮小並進行防卡牆檢查
+            let bounceDx = player.x - demonObj.x;
+            let bounceDy = player.y - demonObj.y;
+            let len = Math.sqrt(bounceDx*bounceDx + bounceDy*bounceDy);
+            if(len > 0) {
+                let targetX = player.x + (bounceDx/len) * (tileSize * 0.6);
+                let targetY = player.y + (bounceDy/len) * (tileSize * 0.6);
+                if (!checkWallCollision(targetX, player.y, player.size)) player.x = targetX;
+                if (!checkWallCollision(player.x, targetY, player.size)) player.y = targetY;
+            }
+
+            canvas.style.transform = 'translate(-10px, 5px)';
+            setTimeout(() => { canvas.style.transform = 'translate(10px, -5px)'; }, 50);
+            setTimeout(() => { canvas.style.transform = 'translate(-5px, 5px)'; }, 100);
+            setTimeout(() => { canvas.style.transform = 'translate(0, 0)'; }, 150);
+
+            if (lives <= 0) setTimeout(() => endGame(false), 500); 
+        }
+
+        function updateHUD() {
+            document.getElementById('score-display').textContent = score;
+            document.getElementById('progress-display').textContent = `${answeredCount}/10`;
+            document.querySelectorAll('.heart-icon').forEach((h, i) => {
+                h.classList.remove('heal');
+                if (i < lives) { h.classList.remove('lost'); void h.offsetWidth; h.classList.add('heal'); } 
+                else { h.classList.add('lost'); }
+            });
+        }
+
+        function triggerQuiz(node) {
+            gameState = 'QUIZ'; joystickVector = { x: 0, y: 0 }; playSound('collect');
+            currentQuizNode = node; const q = node.data;
+            document.getElementById('result-feedback').classList.add('hidden');
+            document.getElementById('options-container').classList.remove('hidden');
+            document.getElementById('theme-tag').textContent = q.theme;
+            document.getElementById('mascot-emoji').textContent = q.mascot;
+            document.getElementById('question-text').textContent = q.question;
+            
+            const optionsContainer = document.getElementById('options-container'); optionsContainer.innerHTML = '';
+            let mappedOptions = q.options.map((opt, i) => ({ text: opt, isCorrect: i === q.correctAnswer })).sort(() => Math.random() - 0.5);
+            mappedOptions.forEach((optObj, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn p-3 md:p-4 text-base md:text-lg font-black text-amber-900 flex items-center gap-3 w-full';
+                btn.innerHTML = `<span class="bg-amber-100 text-amber-800 border-2 border-amber-300 rounded-lg w-8 h-8 flex items-center justify-center shrink-0 shadow-sm">${['A', 'B', 'C', 'D'][i]}</span> <span class="text-left flex-grow">${optObj.text}</span>`;
+                btn.onclick = () => handleAnswer(optObj.isCorrect, btn, q);
+                optionsContainer.appendChild(btn);
+            });
+            document.getElementById('quiz-modal').classList.remove('hidden');
+        }
+
+        function handleAnswer(isCorrect, selectedBtn, qData) {
+            document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+            const feedback = document.getElementById('result-feedback'), icon = document.getElementById('result-icon'), exp = document.getElementById('result-explanation');
+            exp.textContent = qData.explanation;
+            document.getElementById('options-container').classList.add('hidden'); feedback.classList.remove('hidden');
+
+            if (isCorrect) {
+                playSound('correct'); score += 100; answeredCount++; currentQuizNode.active = false;
+                icon.textContent = "⭕ 答對了！"; icon.className = "text-3xl md:text-4xl font-black mb-2 text-green-600";
+                feedback.className = "text-center p-4 rounded-xl border-4 border-green-400 bg-green-50 mb-2 shadow-inner";
+            } else {
+                playSound('wrong'); lives--;
+                icon.textContent = "❌ 答錯了！"; icon.className = "text-3xl md:text-4xl font-black mb-2 text-red-600";
+                feedback.className = "text-center p-4 rounded-xl border-4 border-red-400 bg-red-50 mb-2 shadow-inner";
+                player.invincible = 1.5; 
+            }
+            updateHUD();
+
+            document.getElementById('next-btn').onclick = () => {
+                document.getElementById('quiz-modal').classList.add('hidden');
+                if (lives <= 0) endGame(false);
+                else if (answeredCount >= 10) endGame(true);
+                else { gameState = 'MAZE'; lastTime = 0; joystickVector = { x: 0, y: 0 }; for(let k in keys) keys[k] = false; }
+            };
+        }
+
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            await Tone.start(); playSound('start');
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden'); canvas.classList.remove('hidden');
+            score = 0; lives = 3; answeredCount = 0; initLevel();
+            gameState = 'MAZE'; lastTime = 0; requestAnimationFrame(gameLoop); 
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            playSound('start');
+            document.getElementById('result-screen').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden'); canvas.classList.remove('hidden');
+            score = 0; lives = 3; answeredCount = 0; initLevel();
+            gameState = 'MAZE'; lastTime = 0; 
+        });
+
+        function endGame(isWin) {
+            gameState = 'END'; joystickActive = false;
+            document.getElementById('joystick-base').classList.add('hidden'); document.getElementById('joystick-knob').classList.add('hidden');
+            document.getElementById('hud').classList.add('hidden'); canvas.classList.add('hidden'); document.getElementById('quiz-modal').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            document.getElementById('final-score').textContent = score;
+            const title = document.getElementById('end-title'), badge = document.getElementById('rank-badge'), msg = document.getElementById('result-message');
+            if (isWin) {
+                playSound('win'); fireConfetti();
+                title.textContent = "守護成功！"; title.className = "game-title text-4xl mb-4 text-green-500 drop-shadow-md";
+                badge.textContent = "🏆"; msg.innerHTML = "太棒啦！你收集了所有防災寶石，是真正的<strong class='text-red-500'>防災小英雄</strong>！";
+                msg.className = "text-base md:text-lg font-black text-gray-800 mb-6 p-4 bg-yellow-100 border-4 border-yellow-400 rounded-xl shadow-sm";
+            } else {
+                playSound('lose');
+                title.textContent = "冒險失敗..."; title.className = "game-title text-4xl mb-4 text-gray-500 drop-shadow-md";
+                badge.textContent = "🤕"; msg.innerHTML = "生命值歸零了...<br>多複習防災知識，下次再來挑戰吧！";
+                msg.className = "text-base md:text-lg font-black text-gray-800 mb-6 p-4 bg-gray-200 border-4 border-gray-400 rounded-xl shadow-sm";
+            }
+        }
+
+        const effectsCanvas = document.getElementById('effects-canvas');
+        const eCtx = effectsCanvas.getContext('2d');
+        let particles = [];
+
+        function resizeEffects() { effectsCanvas.width = window.innerWidth; effectsCanvas.height = window.innerHeight; }
+        window.addEventListener('resize', resizeEffects); resizeEffects();
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.size = Math.random() * 15 + 8;
+                this.vx = (Math.random() - 0.5) * 20; this.vy = (Math.random() - 1) * 25; this.gravity = 0.5;
+                this.color = ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#a78bfa', '#ffffff'][Math.floor(Math.random() * 6)];
+                this.rotation = Math.random() * 360; this.rotationSpeed = (Math.random() - 0.5) * 15;
+                this.shape = Math.random() > 0.5 ? 'rect' : 'circle';
+            }
+            update() { this.x += this.vx; this.y += this.vy; this.vy += this.gravity; this.rotation += this.rotationSpeed; }
+            draw() {
+                eCtx.save(); eCtx.translate(this.x, this.y); eCtx.rotate(this.rotation * Math.PI / 180); eCtx.fillStyle = this.color;
+                if (this.shape === 'rect') eCtx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                else { eCtx.beginPath(); eCtx.arc(0, 0, this.size/2, 0, Math.PI * 2); eCtx.fill(); }
+                eCtx.restore();
+            }
+        }
+
+        function animateEffects() {
+            eCtx.clearRect(0, 0, effectsCanvas.width, effectsCanvas.height);
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update(); particles[i].draw();
+                if (particles[i].y > effectsCanvas.height + 50) particles.splice(i, 1);
+            }
+            requestAnimationFrame(animateEffects);
+        }
+        animateEffects();
+
+        function fireConfetti() {
+            for (let i = 0; i < 150; i++) {
+                particles.push(new Particle(effectsCanvas.width/2, effectsCanvas.height));
+                if (i % 3 === 0) particles.push(new Particle(0, effectsCanvas.height));
+                if (i % 3 === 1) particles.push(new Particle(effectsCanvas.width, effectsCanvas.height));
+            }
+        }
+    </script>
+</body>
+</html>
